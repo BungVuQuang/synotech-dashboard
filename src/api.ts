@@ -12,11 +12,14 @@ export class ApiError extends Error {
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 }
-export function setToken(token: string | null): void {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+
+export function setToken(token: string | null, remember = false): void {
+  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  if (!token) return;
+  (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {

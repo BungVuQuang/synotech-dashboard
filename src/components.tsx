@@ -24,13 +24,19 @@ export function StatusBadge({ value }: { value?: string | null }) {
 function labelStatus(value: string) {
   const map: Record<string,string> = {
     active:'Hoạt động', trial:'Dùng thử', grace_period:'Gia hạn', suspended:'Tạm dừng', terminated:'Kết thúc',
+    inactive:'Chưa hoạt động', invited:'Chờ kích hoạt', deleted:'Đã xóa', maintenance:'Bảo trì',
     new:'Mới', triaged:'Đã phân loại', in_progress:'Đang xử lý', waiting_client:'Chờ khách hàng', resolved:'Đã xử lý',
     rejected:'Từ chối', closed:'Đã đóng', reopened:'Mở lại', cancelled:'Đã hủy',
     success:'Thành công', failed:'Thất bại', pending:'Đang chờ', synced:'Đã đồng bộ', out_of_sync:'Lệch dữ liệu',
-    valid:'Hợp lệ', missing_metadata:'Thiếu metadata', invalid_metadata:'Metadata sai', enabled:'Đang bật', disabled:'Đã tắt', archived:'Lưu trữ',
-    open:'Đang mở', completed:'Hoàn tất', no_source:'Thiếu nguồn', error:'Lỗi', partial:'Một phần'
+    missing_in_dify:'Không tìm thấy trên Dify', valid:'Hợp lệ', missing_metadata:'Thiếu thông tin mô tả', invalid_metadata:'Thông tin mô tả sai', enabled:'Đang bật', disabled:'Đã tắt', archived:'Lưu trữ',
+    open:'Đang mở', upcoming:'Sắp mở', completed:'Hoàn tất', no_source:'Thiếu nguồn', error:'Lỗi', partial:'Một phần',
+    low:'Thấp', normal:'Bình thường', medium:'Trung bình', high:'Cao', urgent:'Khẩn cấp', critical:'Nghiêm trọng',
+    assigned:'Đã phân công', contacted:'Đã liên hệ', no_answer:'Không liên hệ được', qualified:'Tiềm năng',
+    unqualified:'Không phù hợp', enrolled:'Đã nhập học', ignored:'Không xử lý',
+    unreviewed:'Chưa xem xét', reviewing:'Đang xem xét', needs_improvement:'Cần cải thiện chatbot',
+    not_chatbot_issue:'Không phải lỗi chatbot', unknown:'Chưa xác định'
   };
-  return map[value] || value.replace(/_/g, ' ');
+  return map[value] || 'Chưa xác định';
 }
 
 export function Toolbar({ search, onSearch, children }: { search?: string; onSearch?: (v:string)=>void; children?: ReactNode }) {
@@ -79,6 +85,73 @@ export function Tabs({ items, active, onChange }: { items:Array<{key:string;labe
 export function MiniBarChart({ data }: { data:Array<{label:string;value:number}> }) {
   const max = Math.max(1,...data.map(d=>d.value));
   return <div className="mini-chart">{data.map(d=><div className="mini-chart-row" key={d.label}><span>{d.label}</span><div><i style={{width:`${Math.max(3,d.value/max*100)}%`}}/></div><b>{d.value}</b></div>)}</div>;
+}
+
+export type TopicFeedbackDatum = {
+  label: string;
+  questions: number;
+  likes: number;
+  dislikes: number;
+};
+
+export function TopicFeedbackChart({ data, height = 330 }: { data: TopicFeedbackDatum[]; height?: number }) {
+  const rows = data.slice(0, 12).map(item => ({
+    ...item,
+    questions: Math.max(0, Number(item.questions || 0)),
+    likes: Math.max(0, Number(item.likes || 0)),
+    dislikes: Math.max(0, Number(item.dislikes || 0)),
+  }));
+  if (!rows.length) return <EmptyState title="Chưa có dữ liệu đánh giá." description="Biểu đồ sẽ hiển thị khi có câu hỏi và lượt đánh giá từ người dùng."/>;
+
+  const width = Math.max(760, rows.length * 92 + 96);
+  const margin = { top: 28, right: 30, bottom: 94, left: 54 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const maxValue = Math.max(1, ...rows.flatMap(row => [row.questions, row.likes, row.dislikes]));
+  const tickCount = 4;
+  const y = (value: number) => margin.top + plotHeight - (value / maxValue) * plotHeight;
+  const step = plotWidth / rows.length;
+  const barWidth = Math.min(38, step * .48);
+  const pointX = (index: number) => margin.left + step * index + step / 2;
+  const linePath = (key: 'likes' | 'dislikes') => rows.map((row, index) => `${index ? 'L' : 'M'} ${pointX(index)} ${y(row[key])}`).join(' ');
+
+  return <div className="combo-chart-shell">
+    <div className="chart-legend" aria-label="Chú thích biểu đồ">
+      <span><i className="legend-questions"/>Số câu hỏi</span>
+      <span><i className="legend-likes"/>Hài lòng</span>
+      <span><i className="legend-dislikes"/>Không hài lòng</span>
+    </div>
+    <div className="combo-chart-scroll">
+      <svg className="combo-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Biểu đồ số câu hỏi, lượt hài lòng và không hài lòng theo chủ đề">
+        {Array.from({ length: tickCount + 1 }, (_, index) => {
+          const value = Math.round(maxValue * (tickCount - index) / tickCount);
+          const yy = margin.top + plotHeight * index / tickCount;
+          return <g key={index}>
+            <line className="chart-grid-line" x1={margin.left} y1={yy} x2={width - margin.right} y2={yy}/>
+            <text className="chart-axis-label" x={margin.left - 10} y={yy + 4} textAnchor="end">{value}</text>
+          </g>;
+        })}
+        {rows.map((row, index) => {
+          const x = pointX(index);
+          const barY = y(row.questions);
+          const label = row.label.length > 21 ? `${row.label.slice(0, 20)}…` : row.label;
+          return <g key={`${row.label}-${index}`}>
+            <rect className="chart-question-bar" x={x - barWidth / 2} y={barY} width={barWidth} height={Math.max(0, margin.top + plotHeight - barY)} rx="5">
+              <title>{`${row.label}: ${row.questions} câu hỏi`}</title>
+            </rect>
+            <text className="chart-value-label" x={x} y={Math.max(margin.top + 12, barY - 7)} textAnchor="middle">{row.questions}</text>
+            <text className="chart-x-label" x={x} y={margin.top + plotHeight + 24} textAnchor="end" transform={`rotate(-38 ${x} ${margin.top + plotHeight + 24})`}>{label}</text>
+          </g>;
+        })}
+        <path className="chart-line chart-like-line" d={linePath('likes')}/>
+        <path className="chart-line chart-dislike-line" d={linePath('dislikes')}/>
+        {rows.map((row, index) => <g key={`points-${index}`}>
+          <circle className="chart-point chart-like-point" cx={pointX(index)} cy={y(row.likes)} r="5"><title>{`${row.label}: ${row.likes} lượt hài lòng`}</title></circle>
+          <circle className="chart-point chart-dislike-point" cx={pointX(index)} cy={y(row.dislikes)} r="5"><title>{`${row.label}: ${row.dislikes} lượt không hài lòng`}</title></circle>
+        </g>)}
+      </svg>
+    </div>
+  </div>;
 }
 
 export function Timeline({ events }: { events:Array<{id?:string;event_type?:string;created_at?:string;actor_name?:string;from_value?:string;to_value?:string}> }) {

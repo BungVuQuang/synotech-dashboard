@@ -5,7 +5,7 @@ import type { User } from './types';
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -30,16 +30,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refresh().finally(() => setLoading(false));
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, remember = false) => {
     const result = await api<{ success: boolean; token: string; user: User }>('/v1/auth/login', {
       method: 'POST', body: JSON.stringify({ username, password })
     });
-    setToken(result.token);
+    setToken(result.token, remember);
     setUser(result.user);
   };
 
   const logout = async () => {
-    try { await api('/v1/auth/logout', { method: 'POST' }); } finally { setToken(null); setUser(null); }
+    try {
+      await api('/v1/auth/logout', { method: 'POST' });
+    } catch {
+      // Phiên có thể đã bị thu hồi sau khi đổi mật khẩu. Vẫn xóa phiên cục bộ.
+    } finally {
+      setToken(null);
+      setUser(null);
+    }
   };
 
   const value = useMemo(() => ({ user, loading, login, logout, refresh }), [user, loading]);

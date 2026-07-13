@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
 import { DashboardLayout } from './layout';
 import {
@@ -10,9 +10,12 @@ import { LoadingState } from './components';
 
 function Protected({ role }: { role?: 'super_admin'|'client_admin' }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="full-loader"><LoadingState label="Đang kiểm tra phiên đăng nhập..."/></div>;
   if (!user) return <Navigate to="/login" replace/>;
   if (role && user.role !== role) return <Navigate to={user.role==='super_admin'?'/admin/overview':'/client/overview'} replace/>;
+  const accountPath = user.role==='super_admin'?'/admin/account':'/client/account';
+  if (user.must_change_password && location.pathname !== accountPath) return <Navigate to={accountPath} replace/>;
   return <DashboardLayout/>;
 }
 
@@ -42,6 +45,7 @@ export default function App(){
       <Route path="/admin/users" element={<UsersPage/>}/>
       <Route path="/admin/audit" element={<AuditPage/>}/>
       <Route path="/admin/settings" element={<SettingsPage/>}/>
+      <Route path="/admin/account" element={<AccountPage/>}/>
     </Route>
     <Route path="*" element={<RootRedirect/>}/>
   </Routes>;
