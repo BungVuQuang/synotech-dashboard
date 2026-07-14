@@ -58,6 +58,11 @@ export function DashboardLayout() {
     const endpoint=user?.role==='super_admin'?'/v1/admin/notifications?unread=true&limit=10':'/v1/dashboard/notifications?unread=true&limit=10';
     api<{success:boolean;results:NotificationItem[]}>(endpoint).then(r=>setNotifications(r.results||[])).catch(()=>{});
   },[location.pathname,user?.role]);
+  useEffect(()=>{
+    const clear=()=>setNotifications([]);
+    window.addEventListener('synotech:notifications-read',clear);
+    return()=>window.removeEventListener('synotech:notifications-read',clear);
+  },[]);
   useEffect(()=>{ sessionStorage.setItem('synotech_selected_client',clientId); },[clientId]);
 
   const pageTitle = useMemo(()=> menu.find(item=>location.pathname.startsWith(item[0]))?.[1] || 'Synotech',[location.pathname,menu]);

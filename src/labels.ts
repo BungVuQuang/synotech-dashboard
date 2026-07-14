@@ -32,6 +32,8 @@ const topics: Record<string, string> = {
   nganh_dao_tao: 'Ngành đào tạo',
   diem_chuan: 'Điểm chuẩn',
   hoc_phi: 'Học phí',
+  hoc_phi_nganh: 'Học phí',
+  le_phi: 'Học phí và lệ phí',
   hoc_bong: 'Học bổng',
   lich_thi: 'Lịch thi',
   quy_che_thi: 'Quy chế thi',
