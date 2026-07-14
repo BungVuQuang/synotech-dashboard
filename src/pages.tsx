@@ -346,8 +346,20 @@ function ChatSurfaceSettings({clientId,withClient}:{clientId:string;withClient:(
   const surface=useLoad(()=>api<{success:boolean;surface:ChatSurfaceConfig}>(withClient('/v1/admin/chat-surface')),[clientId]);
   const [form,setForm]=useState<ChatSurfaceConfig>({client_id:clientId,mode:'both',public_slug:clientId,widget_enabled:1,full_page_enabled:1,header_style:'standard',background_type:'solid',background_value:'#f5f7fb',theme_json:{}});
   const [message,setMessage]=useState('');
+  const [saveError,setSaveError]=useState('');
+  const [saving,setSaving]=useState(false);
   useEffect(()=>{if(surface.data?.surface)setForm({...surface.data.surface,theme_json:surface.data.surface.theme_json||{}})},[surface.data]);
-  const save=async()=>{setMessage('');await api(withClient('/v1/admin/chat-surface'),{method:'PUT',body:JSON.stringify(form)});setMessage('Đã lưu cấu hình hiển thị.');surface.reload()};
+  const save=async()=>{
+    setMessage('');setSaveError('');setSaving(true);
+    try{
+      const publicSlug=String(form.public_slug||clientId).trim().toLowerCase().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');
+      if(!publicSlug)throw new Error('Đường dẫn công khai không hợp lệ.');
+      const payload={...form,client_id:clientId,public_slug:publicSlug};
+      await api(withClient('/v1/admin/chat-surface'),{method:'PUT',body:JSON.stringify(payload)});
+      setForm(payload);setMessage('Đã lưu cấu hình hiển thị.');await surface.reload();
+    }catch(e){setSaveError(e instanceof Error?e.message:String(e));}
+    finally{setSaving(false)}
+  };
   const fullUrl=`https://chat.synotech.io.vn/chat/${encodeURIComponent(form.public_slug||clientId)}`;
   const embed=`<script src="https://chat.synotech.io.vn/widget-loader.js" data-client-id="${clientId}" data-mode="bubble" async></script>`;
   return <SectionCard title="Hình thức hiển thị chatbot" description="Cấu hình cả chatbot nhúng trên website trường và trang chatbot độc lập từ cùng một mã nguồn.">
@@ -362,7 +374,8 @@ function ChatSurfaceSettings({clientId,withClient}:{clientId:string;withClient:(
       <label className="full">Mã nhúng website<div className="copy-code">{embed}</div></label>
       <label className="full">Trang chatbot riêng<div className="surface-link"><input readOnly value={fullUrl}/><a className="btn btn-secondary" href={fullUrl} target="_blank" rel="noreferrer">Mở trang</a></div></label>
       {message&&<div className="success-message full">{message}</div>}
-      <button className="btn btn-primary" onClick={save}><Save size={16}/>Lưu cấu hình hiển thị</button>
+      {saveError&&<div className="form-error full">{saveError}</div>}
+      <button className="btn btn-primary" onClick={save} disabled={saving}><Save size={16}/>{saving?'Đang lưu...':'Lưu cấu hình hiển thị'}</button>
     </div>}
   </SectionCard>
 }
