@@ -76,7 +76,7 @@ export function DashboardLayout() {
   return <div className={`app-shell ${collapsed?'sidebar-collapsed':''}`}>
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark">S</span><div><strong>Synotech</strong><small>Giải pháp công nghệ</small></div></div>
-      <nav>{menu.map(([to,label,Icon])=><NavLink key={to} to={to} className={({isActive})=>isActive?'active':''}><Icon size={19}/><span>{label}</span></NavLink>)}</nav>
+      <nav className="sidebar-nav">{menu.map(([to,label,Icon])=><NavLink key={to} to={to} className={({isActive})=>isActive?'active':''}><Icon size={19}/><span>{label}</span></NavLink>)}</nav>
       <div className="sidebar-bottom"><button className="collapse-btn" onClick={()=>setCollapsed(v=>!v)}>{collapsed?<PanelLeftOpen size={19}/>:<PanelLeftClose size={19}/>}<span>Thu gọn</span></button></div>
     </aside>
     <div className="main-column">

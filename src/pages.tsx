@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { api, download } from './api';
 import { useAuth } from './auth';
-import type { AdmissionBenchmark, AdmissionRound, ApiList, Client, Conversation, KbDocument, Lead, NotificationItem, Ticket, User, ChannelSummary, ChannelIntegration } from './types';
+import type { AdmissionBenchmark, AdmissionRound, ApiList, Client, Conversation, KbDocument, Lead, NotificationItem, Ticket, User, ChannelSummary, ChannelIntegration, ChatSurfaceConfig } from './types';
 import {
   DataTable, Drawer, EmptyState, ErrorState, formatDate, LoadingState, MetricCard, MiniBarChart,
   Modal, PageHeader, SectionCard, Select, shortText, StatusBadge, Tabs, Timeline, Toolbar, TopicFeedbackChart
@@ -313,7 +313,7 @@ export function ChannelsPage({admin=false}:{admin?:boolean}){
   <div className="metrics-grid"><MetricCard label="Kênh nhiều câu hỏi nhất" value={summary.data?.top_channel?labels[summary.data.top_channel]:'Chưa có dữ liệu'} tone="purple"/><MetricCard label="Tổng câu hỏi" value={summary.data?.total_questions||0}/>{rows.map(r=><MetricCard key={r.channel} label={labels[r.channel]||r.channel} value={Number(r.question_count||0)} hint={`${Number(r.session_count||0)} phiên · ${Number(r.user_count||0)} người dùng`} tone={r.channel==='zalo_oa'?'green':r.channel==='messenger'?'purple':'orange'}/>)}</div>
   <SectionCard title="Phân bổ câu hỏi theo kênh" description="So sánh lượng tương tác trên Website, Facebook Messenger và Zalo OA."><MiniBarChart data={rows.map(r=>({label:labels[r.channel]||r.channel,value:Number(r.question_count||0)}))}/></SectionCard>
   {admin&&<SectionCard title="Cấu hình tích hợp" description="Thông tin bảo mật được gửi về máy chủ để mã hóa và không lưu trong trình duyệt.">{integrations.loading?<LoadingState/>:<div className="channel-grid">{(integrations.data?.results||[]).map(item=>{const Icon=icons[item.channel]||RadioTower;return <button className="channel-card" key={item.channel} onClick={()=>setSelected(item)}><Icon size={24}/><div><strong>{item.display_name}</strong><small>{item.external_account_id||'Chưa cấu hình tài khoản'}</small></div><StatusBadge value={item.status}/></button>})}</div>}</SectionCard>}
-  <Drawer open={!!selected} title={selected?.display_name||'Cấu hình kênh'} onClose={()=>setSelected(null)}>{selected&&<ChannelIntegrationEditor item={selected} endpoint={withClient(`/v1/admin/channels/${selected.channel}`)} onSaved={()=>{setSelected(null);integrations.reload();summary.reload()}}/>}</Drawer></>
+  <ChatSurfaceSettings clientId={clientId} withClient={withClient}/><Drawer open={!!selected} title={selected?.display_name||'Cấu hình kênh'} onClose={()=>setSelected(null)}>{selected&&<ChannelIntegrationEditor item={selected} endpoint={withClient(`/v1/admin/channels/${selected.channel}`)} onSaved={()=>{setSelected(null);integrations.reload();summary.reload()}}/>}</Drawer></>
 }
 
 function ChannelIntegrationEditor({item,endpoint,onSaved}:{item:ChannelIntegration;endpoint:string;onSaved:()=>void}){
@@ -322,6 +322,32 @@ function ChannelIntegrationEditor({item,endpoint,onSaved}:{item:ChannelIntegrati
   const save=async()=>{setError('');try{const credentials:any={};if(verifyToken)credentials.verify_token=verifyToken;if(accessToken)credentials.access_token=accessToken;if(appSecret)credentials.app_secret=item.channel==='zalo_oa'?undefined:appSecret;if(item.channel==='zalo_oa'&&appSecret)credentials.oa_secret_key=appSecret;if(appId)credentials.app_id=appId;await api(endpoint,{method:'PUT',body:JSON.stringify({display_name:item.display_name,status,external_account_id:externalId,config:{graph_api_version:'v23.0'},...(Object.keys(credentials).length?{credentials}:{})})});onSaved()}catch(e){setError(e instanceof Error?e.message:String(e))}};
   const webhook=item.channel==='messenger'?`https://gateway.synotech.io.vn/webhooks/messenger/${item.client_id}`:item.channel==='zalo_oa'?`https://gateway.synotech.io.vn/webhooks/zalo/${item.client_id}`:'https://chat.synotech.io.vn';
   return <div className="form-grid"><label className="full">Đường dẫn nhận dữ liệu<input readOnly value={webhook}/></label><label>Trạng thái<select value={status} onChange={e=>setStatus(e.target.value)}><option value="active">Hoạt động</option><option value="disabled">Đã tắt</option></select></label><label>Mã trang Page/OA<input value={externalId} onChange={e=>setExternalId(e.target.value)}/></label>{item.channel!=='web_widget'&&<><label className="full">Mã xác minh<input type="password" value={verifyToken} onChange={e=>setVerifyToken(e.target.value)} placeholder="Chỉ nhập khi tạo hoặc đổi mã xác minh"/></label><label className="full">Mã truy cập<input type="password" value={accessToken} onChange={e=>setAccessToken(e.target.value)} placeholder="Mã truy cập Page/OA"/></label><label>Mã ứng dụng<input value={appId} onChange={e=>setAppId(e.target.value)}/></label><label>{item.channel==='zalo_oa'?'Khóa bí mật OA':'Khóa bí mật ứng dụng'}<input type="password" value={appSecret} onChange={e=>setAppSecret(e.target.value)}/></label></>}{error&&<div className="form-error full">{error}</div>}<button className="btn btn-primary" onClick={save}><Save size={16}/>Lưu cấu hình</button></div>
+}
+
+
+function ChatSurfaceSettings({clientId,withClient}:{clientId:string;withClient:(path:string)=>string}){
+  const surface=useLoad(()=>api<{success:boolean;surface:ChatSurfaceConfig}>(withClient('/v1/admin/chat-surface')),[clientId]);
+  const [form,setForm]=useState<ChatSurfaceConfig>({client_id:clientId,mode:'both',public_slug:clientId,widget_enabled:1,full_page_enabled:1,header_style:'standard',background_type:'solid',background_value:'#f5f7fb',theme_json:{}});
+  const [message,setMessage]=useState('');
+  useEffect(()=>{if(surface.data?.surface)setForm({...surface.data.surface,theme_json:surface.data.surface.theme_json||{}})},[surface.data]);
+  const save=async()=>{setMessage('');await api(withClient('/v1/admin/chat-surface'),{method:'PUT',body:JSON.stringify(form)});setMessage('Đã lưu cấu hình hiển thị.');surface.reload()};
+  const fullUrl=`https://chat.synotech.io.vn/chat/${encodeURIComponent(form.public_slug||clientId)}`;
+  const embed=`<script src="https://chat.synotech.io.vn/widget-loader.js" data-client-id="${clientId}" data-mode="bubble" async></script>`;
+  return <SectionCard title="Hình thức hiển thị chatbot" description="Cấu hình cả chatbot nhúng trên website trường và trang chatbot độc lập từ cùng một mã nguồn.">
+    {surface.loading?<LoadingState/>:<div className="form-grid">
+      <label>Hình thức sử dụng<select value={form.mode} onChange={e=>setForm({...form,mode:e.target.value as any})}><option value="both">Cả hai hình thức</option><option value="widget">Chỉ nhúng website</option><option value="full_page">Chỉ trang chatbot riêng</option></select></label>
+      <label>Đường dẫn công khai<input value={form.public_slug||clientId} onChange={e=>setForm({...form,public_slug:e.target.value})}/></label>
+      <label>Tên miền riêng (không bắt buộc)<input value={form.custom_domain||''} onChange={e=>setForm({...form,custom_domain:e.target.value})} placeholder="chat.ten-truong.edu.vn"/></label>
+      <label>Màu/nền trang<input value={form.background_value||''} onChange={e=>setForm({...form,background_value:e.target.value})} placeholder="#f5f7fb hoặc URL ảnh"/></label>
+      <label className="check"><input type="checkbox" checked={Boolean(form.widget_enabled)} onChange={e=>setForm({...form,widget_enabled:e.target.checked?1:0})}/>Cho phép nhúng vào website</label>
+      <label className="check"><input type="checkbox" checked={Boolean(form.full_page_enabled)} onChange={e=>setForm({...form,full_page_enabled:e.target.checked?1:0})}/>Cho phép trang chatbot riêng</label>
+      <div className="full surface-mode-note">Widget và trang độc lập dùng chung Gateway, phiên hội thoại, cấu hình giao diện và Dify runtime. Không tạo hai hệ thống riêng.</div>
+      <label className="full">Mã nhúng website<div className="copy-code">{embed}</div></label>
+      <label className="full">Trang chatbot riêng<div className="surface-link"><input readOnly value={fullUrl}/><a className="btn btn-secondary" href={fullUrl} target="_blank" rel="noreferrer">Mở trang</a></div></label>
+      {message&&<div className="success-message full">{message}</div>}
+      <button className="btn btn-primary" onClick={save}><Save size={16}/>Lưu cấu hình hiển thị</button>
+    </div>}
+  </SectionCard>
 }
 
 export function UsersPage(){
