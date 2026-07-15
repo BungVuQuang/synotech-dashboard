@@ -42,3 +42,13 @@ strong,b,h1,h2,h3,h4{font-weight:600}
 .login-orbit{position:absolute;border:1px solid rgba(255,255,255,.12);border-radius:50%;z-index:-1}
 .login-orbit-one{width:360px;height:360px}.login-orbit-two{width:520px;height:520px}.login-orbit-three{width:700px;height:700px;border-color:rgba(255,255,255,.055)}
 @media(max-width:900px){.login-visual{display:none}.login-page{grid-template-columns:1fr}.login-card{width:min(430px,88%)}}
+
+/* v4.5 official Synotech branding */
+.brand-logo{width:40px;height:40px;object-fit:contain;display:block;flex:0 0 auto}
+.brand-login .brand-logo{width:48px;height:48px}
+.login-visual{background:#071827 url('/synotech-login-background.png') center/cover no-repeat!important}
+.login-visual:before{background:linear-gradient(90deg,rgba(4,18,31,.18),rgba(4,18,31,.04))!important}
+.login-visual:after,.login-orbit{display:none!important}
+.login-visual-brand{width:min(460px,70%);justify-content:center}
+.login-visual-logo{display:block;width:min(420px,82%);height:auto;object-fit:contain;filter:drop-shadow(0 18px 30px rgba(0,0,0,.25))}
+.inline-edit{display:flex;gap:8px;margin-bottom:8px}.inline-edit input{flex:1}.checkbox-label{display:flex!important;align-items:center;gap:10px}.checkbox-label input{width:auto}.muted{color:#64748b;font-size:14px}

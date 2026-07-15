@@ -16,6 +16,7 @@ const clientMenu = [
   ['/client/tickets','Phản hồi & Yêu cầu',TicketCheck],
   ['/client/leads','Khách hàng tiềm năng',Users],
   ['/client/reports','Báo cáo',FileBarChart],
+  ['/client/ai-observability','Chất lượng AI & Chi phí',ChartNoAxesCombined],
   ['/client/notifications','Thông báo',Bell],
   ['/client/account','Tài khoản',UserCircle]
 ] as const;
@@ -24,12 +25,14 @@ const superMenu = [
   ['/admin/overview','Tổng quan hệ thống',LayoutDashboard],
   ['/admin/clients','Khách hàng',Building2],
   ['/admin/chatbot','Vận hành Chatbot',Bot],
+  ['/admin/productization','Thương hiệu & Tư vấn',Settings],
   ['/admin/channels','Kênh tích hợp',RadioTower],
   ['/admin/admission','Dữ liệu tuyển sinh',CalendarRange],
   ['/admin/knowledge','Kho tri thức',Database],
   ['/admin/conversations','Hội thoại',MessagesSquare],
   ['/admin/tickets','Phản hồi & Yêu cầu',TicketCheck],
   ['/admin/analytics','Phân tích',ChartNoAxesCombined],
+  ['/admin/ai-observability','Chất lượng AI & Chi phí',FileBarChart],
   ['/admin/users','Người dùng',Users],
   ['/admin/audit','Nhật ký thao tác',ScrollText],
   ['/admin/settings','Cấu hình hệ thống',Settings],
@@ -80,7 +83,7 @@ export function DashboardLayout() {
 
   return <div className={`app-shell ${collapsed?'sidebar-collapsed':''}`}>
     <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">S</span><div><strong>Synotech</strong><small>Giải pháp công nghệ</small></div></div>
+      <div className="brand"><img className="brand-logo" src="/synotech-logo.png" alt="Synotech"/><div><strong>Synotech</strong><small>Giải pháp công nghệ</small></div></div>
       <nav className="sidebar-nav">{menu.map(([to,label,Icon])=><NavLink key={to} to={to} className={({isActive})=>isActive?'active':''}><Icon size={19}/><span>{label}</span></NavLink>)}</nav>
       <div className="sidebar-bottom"><button className="collapse-btn" onClick={()=>setCollapsed(v=>!v)}>{collapsed?<PanelLeftOpen size={19}/>:<PanelLeftClose size={19}/>}<span>Thu gọn</span></button></div>
     </aside>
