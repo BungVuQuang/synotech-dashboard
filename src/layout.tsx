@@ -4,40 +4,55 @@ import {
   Building2, Bot, Database, ChartNoAxesCombined, Settings, ScrollText, CalendarRange, RadioTower,
   Search, LogOut, PanelLeftClose, PanelLeftOpen, ChevronDown
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './auth';
 import { api } from './api';
 import type { Client, NotificationItem } from './types';
 
-const clientMenu = [
+type MenuItem = [string,string,LucideIcon];
+type MenuGroup = {key:string;label:string;items:MenuItem[]};
+
+const clientMenu: MenuItem[] = [
   ['/client/overview','Tổng quan',LayoutDashboard],
   ['/client/conversations','Hội thoại',MessagesSquare],
   ['/client/channels','Kênh trò chuyện',RadioTower],
   ['/client/tickets','Phản hồi & Yêu cầu',TicketCheck],
   ['/client/leads','Khách hàng tiềm năng',Users],
   ['/client/reports','Báo cáo',FileBarChart],
-  ['/client/ai-observability','Chất lượng AI & Chi phí',ChartNoAxesCombined],
   ['/client/notifications','Thông báo',Bell],
   ['/client/account','Tài khoản',UserCircle]
-] as const;
+];
 
-const superMenu = [
-  ['/admin/overview','Tổng quan hệ thống',LayoutDashboard],
-  ['/admin/clients','Khách hàng',Building2],
-  ['/admin/chatbot','Vận hành Chatbot',Bot],
-  ['/admin/productization','Thương hiệu & Tư vấn',Settings],
-  ['/admin/channels','Kênh tích hợp',RadioTower],
-  ['/admin/admission','Dữ liệu tuyển sinh',CalendarRange],
-  ['/admin/knowledge','Kho tri thức',Database],
-  ['/admin/conversations','Hội thoại',MessagesSquare],
-  ['/admin/tickets','Phản hồi & Yêu cầu',TicketCheck],
-  ['/admin/analytics','Phân tích',ChartNoAxesCombined],
-  ['/admin/ai-observability','Chất lượng AI & Chi phí',FileBarChart],
-  ['/admin/users','Người dùng',Users],
-  ['/admin/audit','Nhật ký thao tác',ScrollText],
-  ['/admin/settings','Cấu hình hệ thống',Settings],
-  ['/admin/account','Tài khoản',UserCircle]
-] as const;
+const superMenuGroups: MenuGroup[] = [
+  { key:'overview', label:'Tổng quan', items:[
+    ['/admin/overview','Tổng quan hệ thống',LayoutDashboard],
+  ]},
+  { key:'customers', label:'Khách hàng & triển khai', items:[
+    ['/admin/clients','Khách hàng',Building2],
+    ['/admin/chatbot','Vận hành Chatbot',Bot],
+    ['/admin/productization','Thương hiệu & Tư vấn',Settings],
+    ['/admin/channels','Kênh tích hợp',RadioTower],
+  ]},
+  { key:'content', label:'Dữ liệu & nội dung', items:[
+    ['/admin/admission','Dữ liệu tuyển sinh',CalendarRange],
+    ['/admin/knowledge','Kho tri thức',Database],
+    ['/admin/conversations','Hội thoại',MessagesSquare],
+  ]},
+  { key:'quality', label:'Chăm sóc & chất lượng', items:[
+    ['/admin/tickets','Phản hồi & Yêu cầu',TicketCheck],
+    ['/admin/analytics','Phân tích',ChartNoAxesCombined],
+    ['/admin/ai-observability','Chất lượng AI & Chi phí',FileBarChart],
+  ]},
+  { key:'system', label:'Quản trị hệ thống', items:[
+    ['/admin/users','Người dùng',Users],
+    ['/admin/audit','Nhật ký thao tác',ScrollText],
+    ['/admin/settings','Cấu hình hệ thống',Settings],
+    ['/admin/account','Tài khoản',UserCircle],
+  ]},
+];
+
+const superMenu = superMenuGroups.flatMap(group=>group.items);
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -49,6 +64,9 @@ export function DashboardLayout() {
   const [clientId,setClientId] = useState<string>(()=>sessionStorage.getItem('synotech_selected_client') || user?.client_id || 'cyp');
   const [notifications,setNotifications] = useState<NotificationItem[]>([]);
   const menu = user?.role === 'super_admin' ? superMenu : clientMenu;
+  const activeGroup = user?.role==='super_admin' ? superMenuGroups.find(g=>g.items.some(i=>location.pathname.startsWith(i[0])))?.key : undefined;
+  const [openGroups,setOpenGroups] = useState<string[]>(()=>activeGroup?[activeGroup]:['overview']);
+  useEffect(()=>{ if(activeGroup) setOpenGroups(v=>v.includes(activeGroup)?v:[...v,activeGroup]); },[activeGroup]);
 
   useEffect(()=>{
     if(user?.role==='super_admin') api<{success:boolean;results:Client[]}>('/v1/admin/clients').then(r=>{
@@ -84,7 +102,7 @@ export function DashboardLayout() {
   return <div className={`app-shell ${collapsed?'sidebar-collapsed':''}`}>
     <aside className="sidebar">
       <div className="brand"><img className="brand-logo" src="/synotech-logo.png" alt="Synotech"/><div><strong>Synotech</strong><small>Giải pháp công nghệ</small></div></div>
-      <nav className="sidebar-nav">{menu.map(([to,label,Icon])=><NavLink key={to} to={to} className={({isActive})=>isActive?'active':''}><Icon size={19}/><span>{label}</span></NavLink>)}</nav>
+      <nav className="sidebar-nav">{user?.role==='super_admin' ? superMenuGroups.map(group=>{const opened=openGroups.includes(group.key);return <section className="nav-group" key={group.key}><button type="button" className={`nav-group-toggle ${activeGroup===group.key?'active-group':''}`} onClick={()=>setOpenGroups(v=>opened?v.filter(x=>x!==group.key):[...v,group.key])}><span>{group.label}</span><ChevronDown size={15} className={opened?'rotated':''}/></button>{opened&&<div className="nav-group-items">{group.items.map(([to,label,Icon])=><NavLink key={to} to={to} className={({isActive})=>isActive?'active':''}><Icon size={18}/><span>{label}</span></NavLink>)}</div>}</section>}) : menu.map(([to,label,Icon])=><NavLink key={to} to={to} className={({isActive})=>isActive?'active':''}><Icon size={19}/><span>{label}</span></NavLink>)}</nav>
       <div className="sidebar-bottom"><button className="collapse-btn" onClick={()=>setCollapsed(v=>!v)}>{collapsed?<PanelLeftOpen size={19}/>:<PanelLeftClose size={19}/>}<span>Thu gọn</span></button></div>
     </aside>
     <div className="main-column">

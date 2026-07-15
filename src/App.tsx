@@ -28,7 +28,7 @@ export default function App(){
       <Route path="/client/channels" element={<ChannelsPage/>}/>
       <Route path="/client/tickets" element={<TicketsPage/>}/>
       <Route path="/client/leads" element={<LeadsPage/>}/>
-      <Route path="/client/reports" element={<ReportsPage/>}/><Route path="/client/ai-observability" element={<AiObservabilityPage/>}/>
+      <Route path="/client/reports" element={<ReportsPage/>}/>
       <Route path="/client/notifications" element={<NotificationsPage/>}/>
       <Route path="/client/account" element={<AccountPage/>}/>
     </Route>

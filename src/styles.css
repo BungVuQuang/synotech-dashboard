@@ -54,3 +54,22 @@ strong,b,h1,h2,h3,h4{font-weight:600}
 .inline-edit{display:flex;gap:8px;margin-bottom:8px}.inline-edit input{flex:1}.checkbox-label{display:flex!important;align-items:center;gap:10px}.checkbox-label input{width:auto}.muted{color:#64748b;font-size:14px}
 
 .inline-error{margin:0 0 14px;padding:11px 13px;border:1px solid #fecaca;border-radius:10px;background:#fef2f2;color:#b91c1c;font-size:14px}
+
+/* Sidebar grouped navigation */
+.nav-group{display:flex;flex-direction:column;gap:3px;margin-bottom:5px}
+.nav-group-toggle{height:34px;width:100%;display:flex;align-items:center;justify-content:space-between;border:0;background:transparent;padding:0 12px;color:#8a94a3;font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.035em;border-radius:8px;cursor:pointer}
+.nav-group-toggle:hover,.nav-group-toggle.active-group{background:#f6f8fb;color:#4d596a}
+.nav-group-toggle svg{transition:transform .18s ease}.nav-group-toggle svg.rotated{transform:rotate(180deg)}
+.nav-group-items{display:flex;flex-direction:column;gap:3px}
+.sidebar-collapsed .nav-group-toggle{display:none}
+.sidebar-collapsed .nav-group{margin:0}
+
+/* Production asset upload backed by Cloudflare R2 */
+.asset-upload-field{grid-column:auto}
+.asset-upload-box{position:relative;min-height:82px;border:1px dashed #b9c5d6;border-radius:11px;background:#fafcff;display:flex;align-items:center;gap:12px;padding:12px;color:#6b7788;overflow:hidden}
+.asset-upload-box:hover{border-color:#7ea3f8;background:#f6f9ff}
+.asset-upload-box img{width:58px;height:58px;object-fit:contain;border-radius:9px;background:#fff;border:1px solid #e6eaf0}
+.asset-upload-box div{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}.asset-upload-box b{font-size:13px;color:#344054}.asset-upload-box small{font-size:11px;color:#7d8795;font-weight:400}
+.asset-upload-box input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.asset-url-preview{font-size:10px;color:#7b8492;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#f5f7fa;border-radius:7px;padding:6px 8px;font-weight:400}
+.field-error{color:#b4233b!important;font-weight:500!important}

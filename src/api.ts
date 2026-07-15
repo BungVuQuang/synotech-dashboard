@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const TOKEN_KEY = 'synotech_dashboard_token';
 
 export class ApiError extends Error {
@@ -54,4 +54,21 @@ export async function download(path: string, filename: string): Promise<void> {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+
+export async function uploadAsset(file: File, clientId: string, assetType: 'logo'|'favicon'|'background'): Promise<{success:boolean;url:string;key:string}> {
+  const token = getToken();
+  const form = new FormData();
+  form.append('file', file);
+  form.append('client_id', clientId);
+  form.append('asset_type', assetType);
+  const response = await fetch(`${API_BASE}/v1/admin/assets`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form
+  });
+  const body = await response.json().catch(()=>({}));
+  if (!response.ok) throw new ApiError(body?.message || 'Không thể tải ảnh lên.', response.status, body?.error);
+  return body;
 }
