@@ -29,10 +29,7 @@ export function LoginPage(){
   useEffect(()=>{if(user) navigate(user.role==='super_admin'?'/admin/overview':'/client/overview',{replace:true});},[user,navigate]);
   const submit=async(e:FormEvent)=>{e.preventDefault();setLoading(true);setError('');try{await login(username,password,remember);}catch(err){setError(err instanceof Error?err.message:'Đăng nhập thất bại.');}finally{setLoading(false)}};
   return <div className="login-page">
-    <div className="login-visual" aria-label="Synotech">
-      <div className="login-visual-brand"><img className="login-visual-logo" src="/synotech-logo.png" alt="Synotech"/></div>
-      <div className="login-orbit login-orbit-one"/><div className="login-orbit login-orbit-two"/><div className="login-orbit login-orbit-three"/>
-    </div>
+    <div className="login-visual" aria-label="Hình nền thương hiệu Synotech" aria-hidden="true"/>
     <form className="login-card" onSubmit={submit}>
       <div className="brand brand-login"><img className="brand-logo" src="/synotech-logo.png" alt="Synotech"/><div><strong>Synotech</strong><small>Giải pháp công nghệ</small></div></div>
       <h2>Đăng nhập trang quản trị</h2><p>Sử dụng tài khoản được Synotech cấp.</p>
