@@ -363,31 +363,31 @@ function ChatSurfaceSettings({clientId,withClient}:{clientId:string;withClient:(
   const [message,setMessage]=useState('');
   const [saveError,setSaveError]=useState('');
   const [saving,setSaving]=useState(false);
-  useEffect(()=>{if(surface.data?.surface){const loaded=surface.data.surface;const mode:ChatSurfaceConfig['mode']=loaded.mode==='widget'?'widget':'full_page';setForm({...loaded,mode,widget_enabled:mode==='widget'?1:0,full_page_enabled:mode==='full_page'?1:0,theme_json:loaded.theme_json||{}})}},[surface.data]);
+  useEffect(()=>{if(surface.data?.surface){const loaded=surface.data.surface;setForm({...loaded,mode:'full_page',widget_enabled:0,full_page_enabled:1,theme_json:loaded.theme_json||{}})}},[surface.data]);
   const save=async()=>{
     setMessage('');setSaveError('');setSaving(true);
     try{
       const publicSlug=String(form.public_slug||clientId).trim().toLowerCase().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');
       if(!publicSlug)throw new Error('Đường dẫn công khai không hợp lệ.');
-      const mode:ChatSurfaceConfig['mode']=form.mode==='widget'?'widget':'full_page';
-      const payload:ChatSurfaceConfig={...form,mode,client_id:clientId,public_slug:publicSlug,widget_enabled:mode==='widget'?1:0,full_page_enabled:mode==='full_page'?1:0};
+      const mode:ChatSurfaceConfig['mode']='full_page';
+      const payload:ChatSurfaceConfig={...form,mode,client_id:clientId,public_slug:publicSlug,widget_enabled:0,full_page_enabled:1};
       await api(withClient('/v1/admin/chat-surface'),{method:'PUT',body:JSON.stringify(payload)});
       setForm(payload);setMessage('Đã lưu cấu hình hiển thị.');await surface.reload();
     }catch(e){setSaveError(e instanceof Error?e.message:String(e));}
     finally{setSaving(false)}
   };
   const fullUrl=`https://chat.synotech.io.vn/chat/${encodeURIComponent(form.public_slug||clientId)}`;
-  const embed=`<script src="https://chat.synotech.io.vn/widget-loader.js" data-client-id="${clientId}" data-mode="bubble" async></script>`;
-  return <SectionCard title="Hình thức hiển thị chatbot" description="Cấu hình cả chatbot nhúng trên website trường và trang chatbot độc lập từ cùng một mã nguồn.">
+  const embed='Chatbot nhúng đang tạm khóa trong phiên bản production hiện tại.';
+  return <SectionCard title="Hình thức hiển thị chatbot" description="Giai đoạn hiện tại chỉ vận hành trang chatbot riêng để bảo đảm ổn định production.">
     {surface.loading?<LoadingState/>:<div className="form-grid">
       <div className="delivery-mode-grid">
-        <label className={`delivery-mode-card ${form.mode==='widget'?'active':''}`}><input type="radio" name="delivery-mode" checked={form.mode==='widget'} onChange={()=>setForm({...form,mode:'widget',widget_enabled:1,full_page_enabled:0})}/><span><strong>Nhúng vào website trường</strong><small>Hiển thị chatbot dạng cửa sổ trên website chính thức của trường.</small></span></label>
+        <label className="delivery-mode-card disabled"><input type="radio" name="delivery-mode" disabled checked={false}/><span><strong>Nhúng vào website trường — Tạm khóa</strong><small>Không phát hành trong giai đoạn production hiện tại.</small></span></label>
         <label className={`delivery-mode-card ${form.mode==='full_page'?'active':''}`}><input type="radio" name="delivery-mode" checked={form.mode==='full_page'} onChange={()=>setForm({...form,mode:'full_page',widget_enabled:0,full_page_enabled:1})}/><span><strong>Trang chatbot riêng</strong><small>Sử dụng trang chatbot độc lập theo đường dẫn riêng của từng trường.</small></span></label>
       </div>
       <label>Đường dẫn công khai<input value={form.public_slug||clientId} onChange={e=>setForm({...form,public_slug:e.target.value})}/></label>
       <label>Tên miền riêng (không bắt buộc)<input value={form.custom_domain||''} onChange={e=>setForm({...form,custom_domain:e.target.value})} placeholder="chat.ten-truong.edu.vn"/></label>
       <label>Màu/nền trang<input value={form.background_value||''} onChange={e=>setForm({...form,background_value:e.target.value})} placeholder="#f5f7fb hoặc URL ảnh"/></label>
-      <div className="full surface-mode-note">Mỗi khách hàng chỉ kích hoạt một hình thức tại một thời điểm. Bạn vẫn có thể chuyển đổi bất kỳ lúc nào mà không cần tạo lại dữ liệu hay workflow.</div>
+      <div className="full surface-mode-note">Chính sách hiện tại: chỉ trang chatbot riêng được phép hoạt động. Cấu hình cũ của chế độ nhúng không thể làm trang riêng bị tạm ngừng.</div>
       <label className="full">Mã nhúng website<div className="copy-code">{embed}</div></label>
       <label className="full">Trang chatbot riêng<div className="surface-link"><input readOnly value={fullUrl}/><a className="btn btn-secondary" href={fullUrl} target="_blank" rel="noreferrer">Mở trang</a></div></label>
       {message&&<div className="success-message full">{message}</div>}
