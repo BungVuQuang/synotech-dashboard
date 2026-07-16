@@ -150,7 +150,7 @@ export type ChannelSummary = { channel:'web_widget'|'messenger'|'zalo_oa'; sessi
 export type ChannelIntegration = { id?:string; client_id:string; channel:'web_widget'|'messenger'|'zalo_oa'; display_name:string; status:string; external_account_id?:string|null; config?:Record<string,unknown>; has_credentials?:number; last_webhook_at?:string|null; last_message_at?:string|null; last_error?:string|null; };
 
 export type ChatSurfaceConfig = {
-  client_id:string; mode:'widget'|'full_page'|'both'; public_slug:string; custom_domain?:string|null;
+  client_id:string; mode:'widget'|'full_page'; public_slug:string; custom_domain?:string|null;
   widget_enabled:number; full_page_enabled:number; header_style:string; background_type:string;
   background_value?:string|null; theme_json?:Record<string,unknown>; updated_at?:string;
 };

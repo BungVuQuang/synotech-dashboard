@@ -344,17 +344,18 @@ function ChannelIntegrationEditor({item,endpoint,onSaved}:{item:ChannelIntegrati
 
 function ChatSurfaceSettings({clientId,withClient}:{clientId:string;withClient:(path:string)=>string}){
   const surface=useLoad(()=>api<{success:boolean;surface:ChatSurfaceConfig}>(withClient('/v1/admin/chat-surface')),[clientId]);
-  const [form,setForm]=useState<ChatSurfaceConfig>({client_id:clientId,mode:'both',public_slug:clientId,widget_enabled:1,full_page_enabled:1,header_style:'standard',background_type:'solid',background_value:'#f5f7fb',theme_json:{}});
+  const [form,setForm]=useState<ChatSurfaceConfig>({client_id:clientId,mode:'full_page',public_slug:clientId,widget_enabled:0,full_page_enabled:1,header_style:'standard',background_type:'solid',background_value:'#f5f7fb',theme_json:{}});
   const [message,setMessage]=useState('');
   const [saveError,setSaveError]=useState('');
   const [saving,setSaving]=useState(false);
-  useEffect(()=>{if(surface.data?.surface)setForm({...surface.data.surface,theme_json:surface.data.surface.theme_json||{}})},[surface.data]);
+  useEffect(()=>{if(surface.data?.surface){const loaded=surface.data.surface;const mode:ChatSurfaceConfig['mode']=loaded.mode==='widget'?'widget':'full_page';setForm({...loaded,mode,widget_enabled:mode==='widget'?1:0,full_page_enabled:mode==='full_page'?1:0,theme_json:loaded.theme_json||{}})}},[surface.data]);
   const save=async()=>{
     setMessage('');setSaveError('');setSaving(true);
     try{
       const publicSlug=String(form.public_slug||clientId).trim().toLowerCase().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');
       if(!publicSlug)throw new Error('Đường dẫn công khai không hợp lệ.');
-      const payload={...form,client_id:clientId,public_slug:publicSlug};
+      const mode:ChatSurfaceConfig['mode']=form.mode==='widget'?'widget':'full_page';
+      const payload:ChatSurfaceConfig={...form,mode,client_id:clientId,public_slug:publicSlug,widget_enabled:mode==='widget'?1:0,full_page_enabled:mode==='full_page'?1:0};
       await api(withClient('/v1/admin/chat-surface'),{method:'PUT',body:JSON.stringify(payload)});
       setForm(payload);setMessage('Đã lưu cấu hình hiển thị.');await surface.reload();
     }catch(e){setSaveError(e instanceof Error?e.message:String(e));}
@@ -364,13 +365,14 @@ function ChatSurfaceSettings({clientId,withClient}:{clientId:string;withClient:(
   const embed=`<script src="https://chat.synotech.io.vn/widget-loader.js" data-client-id="${clientId}" data-mode="bubble" async></script>`;
   return <SectionCard title="Hình thức hiển thị chatbot" description="Cấu hình cả chatbot nhúng trên website trường và trang chatbot độc lập từ cùng một mã nguồn.">
     {surface.loading?<LoadingState/>:<div className="form-grid">
-      <label>Hình thức sử dụng<select value={form.mode} onChange={e=>setForm({...form,mode:e.target.value as any})}><option value="both">Cả hai hình thức</option><option value="widget">Chỉ nhúng website</option><option value="full_page">Chỉ trang chatbot riêng</option></select></label>
+      <div className="delivery-mode-grid">
+        <label className={`delivery-mode-card ${form.mode==='widget'?'active':''}`}><input type="radio" name="delivery-mode" checked={form.mode==='widget'} onChange={()=>setForm({...form,mode:'widget',widget_enabled:1,full_page_enabled:0})}/><span><strong>Nhúng vào website trường</strong><small>Hiển thị chatbot dạng cửa sổ trên website chính thức của trường.</small></span></label>
+        <label className={`delivery-mode-card ${form.mode==='full_page'?'active':''}`}><input type="radio" name="delivery-mode" checked={form.mode==='full_page'} onChange={()=>setForm({...form,mode:'full_page',widget_enabled:0,full_page_enabled:1})}/><span><strong>Trang chatbot riêng</strong><small>Sử dụng trang chatbot độc lập theo đường dẫn riêng của từng trường.</small></span></label>
+      </div>
       <label>Đường dẫn công khai<input value={form.public_slug||clientId} onChange={e=>setForm({...form,public_slug:e.target.value})}/></label>
       <label>Tên miền riêng (không bắt buộc)<input value={form.custom_domain||''} onChange={e=>setForm({...form,custom_domain:e.target.value})} placeholder="chat.ten-truong.edu.vn"/></label>
       <label>Màu/nền trang<input value={form.background_value||''} onChange={e=>setForm({...form,background_value:e.target.value})} placeholder="#f5f7fb hoặc URL ảnh"/></label>
-      <label className="check"><input type="checkbox" checked={Boolean(form.widget_enabled)} onChange={e=>setForm({...form,widget_enabled:e.target.checked?1:0})}/>Cho phép nhúng vào website</label>
-      <label className="check"><input type="checkbox" checked={Boolean(form.full_page_enabled)} onChange={e=>setForm({...form,full_page_enabled:e.target.checked?1:0})}/>Cho phép trang chatbot riêng</label>
-      <div className="full surface-mode-note">Widget và trang độc lập dùng chung Gateway, phiên hội thoại, cấu hình giao diện và Dify runtime. Không tạo hai hệ thống riêng.</div>
+      <div className="full surface-mode-note">Mỗi khách hàng chỉ kích hoạt một hình thức tại một thời điểm. Bạn vẫn có thể chuyển đổi bất kỳ lúc nào mà không cần tạo lại dữ liệu hay workflow.</div>
       <label className="full">Mã nhúng website<div className="copy-code">{embed}</div></label>
       <label className="full">Trang chatbot riêng<div className="surface-link"><input readOnly value={fullUrl}/><a className="btn btn-secondary" href={fullUrl} target="_blank" rel="noreferrer">Mở trang</a></div></label>
       {message&&<div className="success-message full">{message}</div>}
@@ -484,7 +486,7 @@ export function TenantProductizationPage(){
   const save=async()=>{setSaving(true);try{await api(withClient('/v1/admin/chatbot-theme'),{method:'PUT',body:JSON.stringify(theme)});await api(withClient('/v1/admin/contact-handoff'),{method:'PUT',body:JSON.stringify(handoff)});themeLoad.reload();handoffLoad.reload()}finally{setSaving(false)}};
   const suggestions=Array.isArray(theme.suggested_questions)?theme.suggested_questions:DEFAULT_SUGGESTIONS;
   return <><PageHeader title="Thương hiệu chatbot & chuyển tư vấn" description="Cấu hình riêng cho từng trường. Ảnh được lưu trên Cloudflare R2, không cần sửa mã nguồn hoặc triển khai lại." actions={<button className="btn btn-primary" disabled={saving} onClick={save}><Save size={16}/>{saving?'Đang lưu...':'Lưu cấu hình'}</button>}/>
-  <div className="two-column"><SectionCard title="Nhận diện và giao diện"><div className="form-grid">
+  <div className="two-column productization-grid"><SectionCard title="Nhận diện và giao diện"><div className="form-grid">
     <label>Tên chatbot<input placeholder="Ví dụ: Trợ lý tuyển sinh AI" value={theme.chatbot_name||''} onChange={e=>setTheme({...theme,chatbot_name:e.target.value})}/></label><label>Tên trường hiển thị<input placeholder="Ví dụ: Cao đẳng Y Phú Thọ" value={theme.school_display_name||''} onChange={e=>setTheme({...theme,school_display_name:e.target.value})}/></label>
     <label className="full">Lời chào<textarea rows={3} placeholder="Lời chào hiển thị khi người dùng mở chatbot" value={theme.greeting_text||''} onChange={e=>setTheme({...theme,greeting_text:e.target.value})}/></label><label className="full">Thông báo pháp lý<textarea rows={2} placeholder="Ví dụ: Vui lòng đối chiếu thông báo chính thức của nhà trường" value={theme.legal_notice||''} onChange={e=>setTheme({...theme,legal_notice:e.target.value})}/></label>
     <AssetUploadField label="Logo trường" value={theme.logo_url} clientId={clientId} type="logo" help="PNG, JPG hoặc WebP; tối đa 8 MB" onChange={url=>setTheme({...theme,logo_url:url})}/><AssetUploadField label="Biểu tượng tab trình duyệt" value={theme.favicon_url} clientId={clientId} type="favicon" help="Nên dùng ảnh vuông 64×64 px trở lên" onChange={url=>setTheme({...theme,favicon_url:url})}/><AssetUploadField label="Ảnh nền trang chatbot" value={theme.background_url} clientId={clientId} type="background" help="Khuyến nghị ảnh ngang tối thiểu 1600×900 px" onChange={url=>setTheme({...theme,background_url:url})}/><label>Dòng hỗ trợ<input placeholder="Ví dụ: Hỗ trợ tư vấn 24/7" value={theme.support_text||''} onChange={e=>setTheme({...theme,support_text:e.target.value})}/></label>

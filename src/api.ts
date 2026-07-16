@@ -11,6 +11,22 @@ export class ApiError extends Error {
   }
 }
 
+
+function mutationMessage(path: string, method: string): string {
+  if (path.includes('/assets')) return 'Tải ảnh lên thành công.';
+  if (path.includes('/clients') && method === 'POST') return 'Tạo khách hàng thành công.';
+  if (path.includes('/chat-surface')) return 'Lưu hình thức triển khai chatbot thành công.';
+  if (path.includes('/chatbot-theme')) return 'Lưu cấu hình thương hiệu chatbot thành công.';
+  if (path.includes('/contact-handoff')) return 'Lưu thông tin chuyển tư vấn thành công.';
+  if (method === 'DELETE') return 'Xóa dữ liệu thành công.';
+  if (method === 'POST') return 'Thêm dữ liệu thành công.';
+  return 'Lưu thay đổi thành công.';
+}
+
+function emitToast(message: string, kind: 'success'|'error'|'info' = 'success'): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('synotech:toast', { detail: { message, kind } }));
+}
+
 export function getToken(): string | null {
   return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 }
@@ -36,8 +52,11 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const body = contentType.includes('application/json') ? await response.json() : await response.text();
   if (!response.ok) {
     const message = typeof body === 'object' && body ? body.message || body.error : String(body || response.statusText);
+    if ((options.method || 'GET').toUpperCase() !== 'GET') emitToast(message, 'error');
     throw new ApiError(message, response.status, typeof body === 'object' ? body.error : undefined);
   }
+  const method=(options.method || 'GET').toUpperCase();
+  if (!['GET','HEAD','OPTIONS'].includes(method)) emitToast(mutationMessage(path,method),'success');
   return body as T;
 }
 
@@ -69,6 +88,7 @@ export async function uploadAsset(file: File, clientId: string, assetType: 'logo
     body: form
   });
   const body = await response.json().catch(()=>({}));
-  if (!response.ok) throw new ApiError(body?.message || 'Không thể tải ảnh lên.', response.status, body?.error);
+  if (!response.ok) { const message=body?.message || 'Không thể tải ảnh lên.'; emitToast(message,'error'); throw new ApiError(message, response.status, body?.error); }
+  emitToast('Tải ảnh lên thành công.','success');
   return body;
 }

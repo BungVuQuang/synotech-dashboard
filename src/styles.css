@@ -73,3 +73,16 @@ strong,b,h1,h2,h3,h4{font-weight:600}
 .asset-upload-box input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .asset-url-preview{font-size:10px;color:#7b8492;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#f5f7fa;border-radius:7px;padding:6px 8px;font-weight:400}
 .field-error{color:#b4233b!important;font-weight:500!important}
+
+/* Production toast notifications */
+.toast-stack{position:fixed;top:88px;right:22px;z-index:9999;display:grid;gap:10px;width:min(390px,calc(100vw - 32px));pointer-events:none}
+.toast-item{pointer-events:auto;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:13px 14px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 18px 48px rgba(15,23,42,.18);font-size:13px;line-height:1.45;animation:toast-in .2s ease-out}
+.toast-item button{border:0;background:transparent;color:#667085;padding:2px;display:grid;place-items:center}.toast-success{border-left:4px solid #16a36a}.toast-success>svg{color:#168a5b}.toast-error{border-left:4px solid #dc4c5b}.toast-error>svg{color:#c93e4c}.toast-info{border-left:4px solid #2f6bff}.toast-info>svg{color:#2f6bff}
+@keyframes toast-in{from{opacity:0;transform:translateY(-8px) translateX(10px)}to{opacity:1;transform:none}}
+
+/* Prevent tenant-branding forms from being clipped after image upload */
+.productization-grid>*{min-width:0}.productization-grid .section-card{min-width:0}.productization-grid .section-content{overflow-x:auto;overflow-y:visible}.productization-grid .form-grid{min-width:640px}.productization-grid .inline-edit{min-width:520px}
+.form-grid>*{min-width:0}.asset-upload-field{min-width:0}.asset-upload-box{width:100%}.asset-url-preview{max-width:100%}
+
+/* Exclusive delivery mode selector */
+.delivery-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-column:1/-1}.delivery-mode-card{display:flex;align-items:flex-start;gap:11px;padding:14px;border:1px solid var(--border);border-radius:12px;background:#fafbfd;cursor:pointer}.delivery-mode-card.active{border-color:#7ea3f8;background:#eef5ff;box-shadow:0 0 0 2px rgba(47,107,255,.08)}.delivery-mode-card input{margin-top:3px}.delivery-mode-card strong{display:block;font-size:13px}.delivery-mode-card small{display:block;color:var(--muted);font-size:12px;margin-top:4px;line-height:1.45}
