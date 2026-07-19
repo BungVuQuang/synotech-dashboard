@@ -14,10 +14,10 @@ const knowledgeGroups: Record<string, string> = {
   contact: 'Thông tin liên hệ',
   direct_consultation: 'Tư vấn trực tiếp',
   legal_policy: 'Văn bản và quy định',
-  fallback: 'Nội dung khác',
+  fallback: 'Chưa xác định',
   multi: 'Câu hỏi nhiều nội dung',
   unknown: 'Chưa xác định',
-  other: 'Nội dung khác',
+  other: 'Chưa xác định',
 };
 
 const topics: Record<string, string> = {
@@ -36,6 +36,20 @@ const topics: Record<string, string> = {
   hoc_phi_nganh: 'Học phí',
   le_phi: 'Học phí và lệ phí',
   hoc_bong: 'Học bổng',
+  mien_giam_hoc_phi: 'Miễn giảm học phí',
+  dieu_kien_hoc_bong: 'Điều kiện học bổng',
+  to_hop_xet_tuyen: 'Tổ hợp xét tuyển',
+  thoi_gian_tuyen_sinh: 'Thời gian tuyển sinh',
+  quy_trinh_nhap_hoc: 'Quy trình nhập học',
+  ma_nganh: 'Mã ngành',
+  mon_hoc: 'Môn học',
+  lich_hoc: 'Lịch học',
+  ket_qua_hoc_tap: 'Kết quả học tập',
+  bao_hiem_sinh_vien: 'Bảo hiểm sinh viên',
+  vay_von_sinh_vien: 'Vay vốn sinh viên',
+  ky_tuc_xa: 'Ký túc xá',
+  thu_vien: 'Thư viện',
+  thong_tin_nha_truong: 'Thông tin nhà trường',
   lich_thi: 'Lịch thi',
   quy_che_thi: 'Quy chế thi',
   tot_nghiep: 'Điều kiện tốt nghiệp',
@@ -48,7 +62,7 @@ const topics: Record<string, string> = {
   hoc_vu: 'Học vụ',
   co_hoi_viec_lam: 'Cơ hội việc làm',
   chuong_trinh_dao_tao: 'Chương trình đào tạo',
-  khac: 'Nội dung khác',
+  khac: 'Chưa xác định',
   unknown: 'Chưa xác định',
 };
 
@@ -140,12 +154,12 @@ const auditResources: Record<string, string> = {
 
 export function knowledgeGroupLabel(value?: string | null) {
   const key = String(value || 'unknown').toLowerCase();
-  return knowledgeGroups[key] || 'Nhóm nội dung khác';
+  return knowledgeGroups[key] || 'Chưa xác định';
 }
 
 export function topicLabel(value?: string | null) {
   const key = String(value || 'unknown').toLowerCase();
-  return topics[key] || 'Chủ đề khác';
+  return topics[key] || 'Chưa xác định';
 }
 
 export function intentLabel(value?: string | null) {

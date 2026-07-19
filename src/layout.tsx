@@ -9,16 +9,42 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './auth';
 import { api } from './api';
 import type { Client, NotificationItem } from './types';
+import { notify } from './toast';
 
 type MenuItem = [string,string,LucideIcon];
 type MenuGroup = {key:string;label:string;items:MenuItem[]};
+
+
+function updateBrowserNotificationBadge(count:number){
+  const doc=document;
+  const root=doc.documentElement;
+  const baseTitle=root.dataset.synotechBaseTitle||doc.title.replace(/^\(\d+\+?\)\s*/,"");
+  root.dataset.synotechBaseTitle=baseTitle;
+  doc.title=count>0?`(${count>99?'99+':count}) ${baseTitle}`:baseTitle;
+  let link=doc.querySelector<HTMLLinkElement>('link[rel~="icon"]');
+  if(!link){link=doc.createElement('link');link.rel='icon';link.href='/favicon.svg';doc.head.appendChild(link);}
+  const baseHref=link.dataset.synotechBaseHref||link.href||'/favicon.svg';
+  link.dataset.synotechBaseHref=baseHref;
+  if(count<=0){link.href=baseHref;return;}
+  const canvas=doc.createElement('canvas');canvas.width=64;canvas.height=64;
+  const ctx=canvas.getContext('2d');if(!ctx)return;
+  const drawBadge=()=>{
+    ctx.beginPath();ctx.arc(49,15,15,0,Math.PI*2);ctx.fillStyle='#dc2626';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='bold 17px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(count>99?'99+':String(count),49,16);
+    link!.href=canvas.toDataURL('image/png');
+  };
+  const fallback=()=>{ctx.fillStyle='#2563eb';ctx.fillRect(4,4,48,48);ctx.fillStyle='#fff';ctx.font='bold 30px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('S',28,29);drawBadge();};
+  const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{ctx.drawImage(img,4,4,48,48);drawBadge();};img.onerror=fallback;img.src=baseHref;
+}
 
 const clientMenu: MenuItem[] = [
   ['/client/overview','Tổng quan',LayoutDashboard],
   ['/client/conversations','Hội thoại',MessagesSquare],
   ['/client/channels','Kênh trò chuyện',RadioTower],
   ['/client/tickets','Phản hồi & Yêu cầu',TicketCheck],
-  ['/client/leads','Khách hàng tiềm năng',Users],
+  ['/client/leads','Tư vấn trực tiếp',Users],
   ['/client/reports','Báo cáo',FileBarChart],
   ['/client/notifications','Thông báo',Bell],
   ['/client/account','Tài khoản',UserCircle]
@@ -63,6 +89,8 @@ export function DashboardLayout() {
   const [clients,setClients] = useState<Client[]>([]);
   const [clientId,setClientId] = useState<string>(()=>sessionStorage.getItem('synotech_selected_client') || user?.client_id || 'cyp');
   const [notifications,setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount,setUnreadCount] = useState(0);
+  const previousUnreadRef = useRef<number|null>(null);
   const menu = user?.role === 'super_admin' ? superMenu : clientMenu;
   const activeGroup = user?.role==='super_admin' ? superMenuGroups.find(g=>g.items.some(i=>location.pathname.startsWith(i[0])))?.key : undefined;
   const [openGroups,setOpenGroups] = useState<string[]>(()=>activeGroup?[activeGroup]:['overview']);
@@ -76,14 +104,32 @@ export function DashboardLayout() {
     }).catch(()=>{});
   },[user?.role]);
   useEffect(()=>{
-    const endpoint=user?.role==='super_admin'?'/v1/admin/notifications?unread=true&limit=10':'/v1/dashboard/notifications?unread=true&limit=10';
-    api<{success:boolean;results:NotificationItem[]}>(endpoint).then(r=>setNotifications(r.results||[])).catch(()=>{});
-  },[location.pathname,user?.role]);
-  useEffect(()=>{
-    const clear=()=>setNotifications([]);
+    let cancelled=false;
+    const endpoint=user?.role==='super_admin'?'/v1/admin/notifications?unread=true&limit=20':'/v1/dashboard/notifications?unread=true&limit=20';
+    const load=()=>api<{success:boolean;results:NotificationItem[];unread_count?:number}>(endpoint).then(r=>{
+      if(cancelled)return;
+      const nextCount=Number(r.unread_count??r.results?.length??0);
+      const previous=previousUnreadRef.current;
+      if(previous!==null&&nextCount>previous&&user?.role==='client_admin'){
+        const newest=(r.results||[])[0];
+        notify(newest?.resource_type==='lead'?'Có khách hàng tiềm năng mới.':'Bạn có thông báo mới.','info');
+      }
+      previousUnreadRef.current=nextCount;
+      setNotifications(r.results||[]);
+      setUnreadCount(nextCount);
+    }).catch(()=>{});
+    const clear=()=>{previousUnreadRef.current=0;setNotifications([]);setUnreadCount(0)};
+    const refresh=()=>{void load()};
+    const visible=()=>{if(!document.hidden)void load()};
+    void load();
+    const timer=window.setInterval(load,20000);
+    window.addEventListener('focus',refresh);
+    document.addEventListener('visibilitychange',visible);
     window.addEventListener('synotech:notifications-read',clear);
-    return()=>window.removeEventListener('synotech:notifications-read',clear);
-  },[]);
+    window.addEventListener('synotech:notifications-refresh',refresh);
+    return()=>{cancelled=true;window.clearInterval(timer);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',visible);window.removeEventListener('synotech:notifications-read',clear);window.removeEventListener('synotech:notifications-refresh',refresh)};
+  },[location.pathname,user?.role]);
+  useEffect(()=>{updateBrowserNotificationBadge(unreadCount)},[unreadCount]);
   useEffect(()=>{ sessionStorage.setItem('synotech_selected_client',clientId); },[clientId]);
 
   const pageTitle = useMemo(()=> menu.find(item=>location.pathname.startsWith(item[0]))?.[1] || 'Synotech',[location.pathname,menu]);
@@ -109,7 +155,7 @@ export function DashboardLayout() {
       <header className="topbar">
         <div className="topbar-title"><h2>{pageTitle}</h2>{user?.role==='super_admin' && <div className="tenant-select"><Building2 size={16}/><select ref={tenantSelectRef} value={clientId} onChange={e=>setClientId(e.target.value)} aria-label="Chọn khách hàng">{clients.map(c=><option key={c.client_id||c.id} value={c.client_id||c.id}>{c.display_name}</option>)}</select><button type="button" className="tenant-select-arrow" onClick={openTenantPicker} aria-label="Mở danh sách khách hàng"><ChevronDown size={15}/></button></div>}</div>
         <div className="topbar-search"><Search size={17}/><input placeholder="Tìm yêu cầu, hội thoại, tài liệu..." onKeyDown={e=>{if(e.key==='Enter'){const q=(e.currentTarget.value||'').trim(); if(q) navigate(user?.role==='super_admin'?`/admin/tickets?q=${encodeURIComponent(q)}`:`/client/conversations?q=${encodeURIComponent(q)}`)}}}/></div>
-        <div className="topbar-actions"><button className="notification-btn" onClick={()=>navigate(user?.role==='super_admin'?'/admin/tickets':'/client/notifications')}><Bell size={19}/>{notifications.length>0&&<b>{notifications.length}</b>}</button><button className="user-chip" onClick={()=>navigate(accountPath)} title="Mở thông tin tài khoản"><span>{(user?.full_name||'U').slice(0,1).toUpperCase()}</span><div><strong>{user?.full_name}</strong><small>{user?.role==='super_admin'?'Quản trị hệ thống':'Quản trị khách hàng'}</small></div></button><button className="icon-btn" title="Đăng xuất" onClick={()=>logout()}><LogOut size={18}/></button></div>
+        <div className="topbar-actions"><button className="notification-btn" onClick={()=>navigate(user?.role==='super_admin'?'/admin/tickets':'/client/notifications')}><Bell size={19}/>{unreadCount>0&&<b>{unreadCount>99?'99+':unreadCount}</b>}</button><button className="user-chip" onClick={()=>navigate(accountPath)} title="Mở thông tin tài khoản"><span>{(user?.full_name||'U').slice(0,1).toUpperCase()}</span><div><strong>{user?.full_name}</strong><small>{user?.role==='super_admin'?'Quản trị hệ thống':'Quản trị khách hàng'}</small></div></button><button className="icon-btn" title="Đăng xuất" onClick={()=>logout()}><LogOut size={18}/></button></div>
       </header>
       <main><Outlet context={{clientId,withClient}}/></main>
     </div>

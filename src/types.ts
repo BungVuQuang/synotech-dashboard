@@ -76,6 +76,8 @@ export type KbDocument = {
   document_name: string;
   source_id?: string | null;
   source_url?: string | null;
+  dify_document_id?: string | null;
+  dify_dataset_id?: string | null;
   knowledge_group?: string | null;
   year?: number | null;
   round_no?: number | null;
@@ -84,6 +86,8 @@ export type KbDocument = {
   metadata_check_status: string;
   sync_status: string;
   chunk_count?: number | null;
+  metadata_json?: string | null;
+  catalog_origin?: string | null;
   updated_at: string;
 };
 
