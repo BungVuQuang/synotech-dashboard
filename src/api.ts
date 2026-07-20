@@ -7,9 +7,37 @@ if (!API_BASE && import.meta.env.PROD) {
 const TOKEN_KEY = 'synotech_dashboard_token';
 
 export function repairVietnameseText(value: unknown): string {
-  const text=String(value??'');
-  if(!/[ÃÄÆáºá»]/.test(text)) return text;
-  try { return decodeURIComponent(escape(text)); } catch { return text; }
+  let text = String(value ?? '');
+  if (!text) return text;
+
+  // Repair common UTF-8 -> Windows-1252 mojibake. Run at most twice because
+  // some legacy API strings were encoded twice before reaching the browser.
+  const cp1252Reverse: Record<string, number> = {
+    '€':0x80,'‚':0x82,'ƒ':0x83,'„':0x84,'…':0x85,'†':0x86,'‡':0x87,'ˆ':0x88,'‰':0x89,
+    'Š':0x8A,'‹':0x8B,'Œ':0x8C,'Ž':0x8E,'‘':0x91,'’':0x92,'“':0x93,'”':0x94,
+    '•':0x95,'–':0x96,'—':0x97,'˜':0x98,'™':0x99,'š':0x9A,'›':0x9B,'œ':0x9C,'ž':0x9E,'Ÿ':0x9F,
+  };
+  const badness = (input: string) => (input.match(/Ã|Â|Ä|Æ|áº|á»|â€|�/g) || []).length;
+  const decodeOnce = (input: string): string | null => {
+    const bytes: number[] = [];
+    for (const ch of input) {
+      const code = ch.codePointAt(0)!;
+      if (code <= 0xFF) bytes.push(code);
+      else if (cp1252Reverse[ch] !== undefined) bytes.push(cp1252Reverse[ch]);
+      else return null;
+    }
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); }
+    catch { return null; }
+  };
+  for (let i = 0; i < 2; i += 1) {
+    const candidate = decodeOnce(text);
+    if (!candidate || badness(candidate) >= badness(text)) break;
+    text = candidate;
+  }
+  return text
+    .replace(/�/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 
@@ -25,7 +53,6 @@ export class ApiError extends Error {
 
 
 function mutationMessage(path: string, method: string, body: any): string {
-  if (body && typeof body === 'object' && typeof body.message === 'string' && body.message.trim()) return repairVietnameseText(body.message.trim());
   const rules: Array<[RegExp,string]> = [
     [/\/auth\/login$/, 'Đăng nhập thành công.'], [/\/auth\/logout$/, 'Đăng xuất thành công.'],
     [/\/assets/, 'Tải ảnh lên thành công.'], [/\/knowledge\/sync|\/kb\/sync/, 'Đồng bộ Kho tri thức thành công.'],
@@ -40,6 +67,10 @@ function mutationMessage(path: string, method: string, body: any): string {
   ];
   for (const [pattern,message] of rules) if(pattern.test(path)) return message;
   if (method === 'DELETE') return 'Xóa thành công.';
+  if (body && typeof body === 'object' && typeof body.message === 'string' && body.message.trim()) {
+    const repaired = repairVietnameseText(body.message.trim());
+    if (repaired && !/Ã|Â|Ä|Æ|áº|á»|�/.test(repaired)) return repaired;
+  }
   return 'Thao tác hoàn tất.';
 }
 function emitToast(message: string, kind: 'success'|'error'|'info' = 'success'): void {
@@ -71,7 +102,14 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const contentType = response.headers.get('content-type') || '';
   const body = contentType.includes('application/json') ? await response.json() : await response.text();
   if (!response.ok) {
-    const message = repairVietnameseText(typeof body === 'object' && body ? body.message || body.error : String(body || response.statusText));
+    let message = repairVietnameseText(typeof body === 'object' && body ? body.message || body.error : String(body || response.statusText));
+    if (!message || /Ã|Â|Ä|Æ|áº|á»|�/.test(message)) {
+      message = response.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+        : response.status === 403 ? 'Bạn không có quyền thực hiện thao tác này.'
+        : response.status === 404 ? 'Không tìm thấy dữ liệu yêu cầu.'
+        : response.status >= 500 ? 'Hệ thống đang gặp sự cố. Vui lòng thử lại sau.'
+        : 'Không thể hoàn tất thao tác. Vui lòng kiểm tra lại dữ liệu.';
+    }
     if ((options.method || 'GET').toUpperCase() !== 'GET') emitToast(message, 'error');
     throw new ApiError(message, response.status, typeof body === 'object' ? body.error : undefined);
   }
@@ -108,7 +146,7 @@ export async function uploadAsset(file: File, clientId: string, assetType: 'logo
     body: form
   });
   const body = await response.json().catch(()=>({}));
-  if (!response.ok) { const message=body?.message || 'Không thể tải ảnh lên.'; emitToast(message,'error'); throw new ApiError(message, response.status, body?.error); }
+  if (!response.ok) { let message=repairVietnameseText(body?.message || 'Không thể tải ảnh lên.'); if (/Ã|Â|Ä|Æ|áº|á»|�/.test(message)) message='Không thể tải ảnh lên.'; emitToast(message,'error'); throw new ApiError(message, response.status, body?.error); }
   emitToast('Tải ảnh lên thành công.','success');
   return body;
 }
