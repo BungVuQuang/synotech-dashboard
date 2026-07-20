@@ -6,6 +6,13 @@ if (!API_BASE && import.meta.env.PROD) {
 }
 const TOKEN_KEY = 'synotech_dashboard_token';
 
+export function repairVietnameseText(value: unknown): string {
+  const text=String(value??'');
+  if(!/[ÃÄÆáºá»]/.test(text)) return text;
+  try { return decodeURIComponent(escape(text)); } catch { return text; }
+}
+
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -18,7 +25,7 @@ export class ApiError extends Error {
 
 
 function mutationMessage(path: string, method: string, body: any): string {
-  if (body && typeof body === 'object' && typeof body.message === 'string' && body.message.trim()) return body.message.trim();
+  if (body && typeof body === 'object' && typeof body.message === 'string' && body.message.trim()) return repairVietnameseText(body.message.trim());
   const rules: Array<[RegExp,string]> = [
     [/\/auth\/login$/, 'Đăng nhập thành công.'], [/\/auth\/logout$/, 'Đăng xuất thành công.'],
     [/\/assets/, 'Tải ảnh lên thành công.'], [/\/knowledge\/sync|\/kb\/sync/, 'Đồng bộ Kho tri thức thành công.'],
@@ -36,6 +43,7 @@ function mutationMessage(path: string, method: string, body: any): string {
   return 'Thao tác hoàn tất.';
 }
 function emitToast(message: string, kind: 'success'|'error'|'info' = 'success'): void {
+  message = repairVietnameseText(message);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('synotech:toast', { detail: { message, kind } }));
 }
 
@@ -63,7 +71,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const contentType = response.headers.get('content-type') || '';
   const body = contentType.includes('application/json') ? await response.json() : await response.text();
   if (!response.ok) {
-    const message = typeof body === 'object' && body ? body.message || body.error : String(body || response.statusText);
+    const message = repairVietnameseText(typeof body === 'object' && body ? body.message || body.error : String(body || response.statusText));
     if ((options.method || 'GET').toUpperCase() !== 'GET') emitToast(message, 'error');
     throw new ApiError(message, response.status, typeof body === 'object' ? body.error : undefined);
   }

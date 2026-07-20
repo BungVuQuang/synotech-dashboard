@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { repairVietnameseText } from './api';
 
 type ToastKind = 'success'|'error'|'info';
 type ToastItem = { id:string; kind:ToastKind; message:string };
@@ -13,7 +14,7 @@ export function ToastHost(){
   useEffect(()=>{
     const handler=(event:Event)=>{
       const detail=(event as CustomEvent).detail||{};
-      const item:ToastItem={id:crypto.randomUUID(),kind:detail.kind||'info',message:String(detail.message||'Đã hoàn tất thao tác.')};
+      const item:ToastItem={id:crypto.randomUUID(),kind:detail.kind||'info',message:repairVietnameseText(detail.message||'Đã hoàn tất thao tác.')};
       setItems(current=>[...current.slice(-3),item]);
       window.setTimeout(()=>setItems(current=>current.filter(x=>x.id!==item.id)),3800);
     };
