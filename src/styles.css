@@ -84,10 +84,12 @@ strong,b,h1,h2,h3,h4{font-weight:600}
 .productization-grid>*{min-width:0}.productization-grid .section-card{min-width:0}.productization-grid .section-content{overflow-x:auto;overflow-y:visible}.productization-grid .form-grid{min-width:640px}.productization-grid .inline-edit{min-width:520px}
 .form-grid>*{min-width:0}.asset-upload-field{min-width:0}.asset-upload-box{width:100%}.asset-url-preview{max-width:100%}
 
-/* Exclusive delivery mode selector */
+/* Website multi-surface selector */
 .delivery-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-column:1/-1}.delivery-mode-card{display:flex;align-items:flex-start;gap:11px;padding:14px;border:1px solid var(--border);border-radius:12px;background:#fafbfd;cursor:pointer}.delivery-mode-card.active{border-color:#7ea3f8;background:#eef5ff;box-shadow:0 0 0 2px rgba(47,107,255,.08)}.delivery-mode-card input{margin-top:3px}.delivery-mode-card strong{display:block;font-size:13px}.delivery-mode-card small{display:block;color:var(--muted);font-size:12px;margin-top:4px;line-height:1.45}
 
 .pagination{display:flex;align-items:center;justify-content:center;gap:8px;padding:22px 0 8px}.pagination button{min-width:38px;height:38px;border:1px solid #dbe3ef;border-radius:8px;background:#fff;color:#64748b;cursor:pointer}.pagination button.active{background:#2563eb;color:#fff;border-color:#2563eb}.pagination button:disabled{opacity:.45;cursor:not-allowed}.pagination span{padding:0 5px;color:#94a3b8}.topic-summary{cursor:help;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .list-summary{padding:14px 4px 0;color:#667085;font-size:13px;text-align:right}
 
 .metadata-readonly-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.metadata-readonly-grid>div{border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:10px;background:#fff;min-width:0}.metadata-readonly-grid small{display:block;color:#64748b;margin-bottom:4px}.metadata-readonly-grid strong{display:block;font-weight:500;overflow-wrap:anywhere}@media(max-width:760px){.metadata-readonly-grid{grid-template-columns:1fr}}
+
+.surface-choice-title{display:grid;gap:4px;padding:2px 0 4px}.surface-choice-title strong{font-size:14px}.surface-choice-title small{color:var(--muted);font-size:12px;line-height:1.45}.website-channel-editor .delivery-mode-card input{accent-color:var(--blue)}

@@ -287,11 +287,6 @@ export function ChatbotOperationsPage(){
       <MetricCard label="Giới hạn câu hỏi" value={data.subscription?.monthly_question_limit||0} tone="purple"/>
     </div>
     <ChatRuntimeEditor key={clientId} clientId={clientId} data={data} secret={details.data?.secret} knowledgeSecret={details.data?.knowledgeSecret} onSaved={details.reload}/>
-    <ChatSurfaceSettings clientId={clientId} withClient={withClient}/>
-    <div className="two-column">
-      <SectionCard title="Giao diện cửa sổ chat" description="Nội dung hiển thị và gợi ý câu hỏi trên cửa sổ trò chuyện."><JsonEditor initial={runtime.widget_config_json} endpoint={withClient(`/v1/admin/clients/${clientId}/config`)} field="widget_config"/></SectionCard>
-      <SectionCard title="Điều hướng câu hỏi" description="Quy tắc phân loại và lựa chọn nguồn trả lời."><JsonEditor initial={runtime.routing_config_json} endpoint={withClient(`/v1/admin/clients/${clientId}/config`)} field="routing_config"/></SectionCard>
-    </div>
     <FeatureFlagsEditor key={`features-${clientId}`} clientId={clientId} features={data.features||[]} onSaved={details.reload}/>
   </>;
 }
@@ -354,8 +349,6 @@ function FeatureFlagsEditor({clientId,features,onSaved}:{clientId:string;feature
 }
 
 function safeParseJson(value:any){if(!value)return{};if(typeof value==='object')return value;try{return JSON.parse(String(value))}catch{return{}}}
-
-function JsonEditor({initial,endpoint,field}:{initial:any;endpoint:string;field:string}){const [value,setValue]=useState(()=>{try{return JSON.stringify(typeof initial==='string'?JSON.parse(initial):initial||{},null,2)}catch{return '{}'}});const [saved,setSaved]=useState(false);const [error,setError]=useState('');const save=async()=>{setError('');try{const parsed=JSON.parse(value);await api(endpoint,{method:'PATCH',body:JSON.stringify({[field]:parsed})});setSaved(true);setTimeout(()=>setSaved(false),1500)}catch(e){setError(e instanceof Error?e.message:String(e))}};return <><textarea className="code-editor" value={value} onChange={e=>setValue(e.target.value)} rows={14}/>{error&&<div className="form-error">{error}</div>}<button className="btn btn-primary" onClick={save}>{saved?'Đã lưu':'Lưu cấu hình'}</button></>}
 
 export function LeadsPage(){
   const {withClient}=useOutletContext<DashboardOutletContext>();
@@ -488,8 +481,8 @@ export function ChannelsPage({admin=false}:{admin?:boolean}){
   return <><PageHeader title={admin?'Kênh tích hợp':'Kênh trò chuyện'} description={admin?'Kết nối Website, Facebook Messenger và Zalo OA cho khách hàng đang chọn.':'So sánh lượng người dùng và câu hỏi theo từng kênh.'} actions={<button className="btn btn-secondary" onClick={()=>{summary.reload();integrations.reload()}}><RefreshCw size={16}/>Làm mới</button>}/>
   <div className="metrics-grid"><MetricCard label="Kênh nhiều câu hỏi nhất" value={summary.data?.top_channel?labels[summary.data.top_channel]:'Chưa có dữ liệu'} tone="purple"/><MetricCard label="Tổng câu hỏi" value={summary.data?.total_questions||0}/>{rows.map(r=><MetricCard key={r.channel} label={labels[r.channel]||r.channel} value={Number(r.question_count||0)} hint={`${Number(r.session_count||0)} phiên · ${Number(r.user_count||0)} người dùng`} tone={r.channel==='zalo_oa'?'green':r.channel==='messenger'?'purple':'orange'}/>)}</div>
   <SectionCard title="Phân bổ câu hỏi theo kênh" description="So sánh lượng tương tác trên Website, Facebook Messenger và Zalo OA."><MiniBarChart data={rows.map(r=>({label:labels[r.channel]||r.channel,value:Number(r.question_count||0)}))}/></SectionCard>
-  {admin&&<SectionCard title="Cấu hình tích hợp" description="Thông tin bảo mật được gửi về máy chủ để mã hóa và không lưu trong trình duyệt.">{integrations.loading?<LoadingState/>:<div className="channel-grid">{(integrations.data?.results||[]).map(item=>{const Icon=icons[item.channel]||RadioTower;return <button className="channel-card" key={item.channel} onClick={()=>setSelected(item)}><Icon size={24}/><div><strong>{item.display_name}</strong><small>{item.external_account_id||'Chưa cấu hình tài khoản'}</small></div><StatusBadge value={item.status}/></button>})}</div>}</SectionCard>}
-  {admin&&<ChatSurfaceSettings clientId={clientId} withClient={withClient}/>}<Drawer open={!!selected} title={selected?.display_name||'Cấu hình kênh'} onClose={()=>setSelected(null)}>{selected&&<ChannelIntegrationEditor item={selected} endpoint={withClient(`/v1/admin/channels/${selected.channel}`)} onSaved={()=>{setSelected(null);integrations.reload();summary.reload()}}/>}</Drawer></>
+  {admin&&<SectionCard title="Cấu hình tích hợp" description="Chọn từng kênh để cấu hình. Thông tin bảo mật được mã hóa và không lưu trong trình duyệt.">{integrations.loading?<LoadingState/>:integrations.error?<ErrorState message={integrations.error} retry={integrations.reload}/>:<div className="channel-grid">{(integrations.data?.results||[]).map(item=>{const Icon=icons[item.channel]||RadioTower;const detail=item.channel==='web_widget'?'Cấu hình trang riêng và mã nhúng website':item.external_account_id||'Chưa cấu hình tài khoản';return <button className="channel-card" key={item.channel} onClick={()=>setSelected(item)}><Icon size={24}/><div><strong>{item.display_name}</strong><small>{detail}</small></div><StatusBadge value={item.status}/></button>})}</div>}</SectionCard>}
+  <Drawer open={!!selected} title={selected?.display_name||'Cấu hình kênh'} onClose={()=>setSelected(null)}>{selected&&(selected.channel==='web_widget'?<WebsiteChannelEditor item={selected} clientId={clientId} withClient={withClient} onSaved={()=>{setSelected(null);integrations.reload();summary.reload()}}/>:<ChannelIntegrationEditor item={selected} endpoint={withClient(`/v1/admin/channels/${selected.channel}`)} onSaved={()=>{setSelected(null);integrations.reload();summary.reload()}}/>)}</Drawer></>
 }
 
 function ChannelIntegrationEditor({item,endpoint,onSaved}:{item:ChannelIntegration;endpoint:string;onSaved:()=>void}){
@@ -501,44 +494,49 @@ function ChannelIntegrationEditor({item,endpoint,onSaved}:{item:ChannelIntegrati
 }
 
 
-function ChatSurfaceSettings({clientId,withClient}:{clientId:string;withClient:(path:string)=>string}){
+function WebsiteChannelEditor({item,clientId,withClient,onSaved}:{item:ChannelIntegration;clientId:string;withClient:(path:string)=>string;onSaved:()=>void}){
   const surface=useLoad(()=>api<{success:boolean;surface:ChatSurfaceConfig}>(withClient('/v1/admin/chat-surface')),[clientId]);
   const [form,setForm]=useState<ChatSurfaceConfig>({client_id:clientId,mode:'full_page',public_slug:clientId,widget_enabled:0,full_page_enabled:1,header_style:'standard',background_type:'solid',background_value:'#f5f7fb',theme_json:{}});
-  const [message,setMessage]=useState('');
   const [saveError,setSaveError]=useState('');
   const [saving,setSaving]=useState(false);
-  useEffect(()=>{if(surface.data?.surface){const loaded=surface.data.surface;setForm({...loaded,mode:'full_page',widget_enabled:0,full_page_enabled:1,theme_json:loaded.theme_json||{}})}},[surface.data]);
+  useEffect(()=>{if(surface.data?.surface){const loaded=surface.data.surface;setForm({...loaded,theme_json:loaded.theme_json||{}})}},[surface.data]);
+  const setSurface=(kind:'widget'|'full_page',enabled:boolean)=>{
+    const widget=kind==='widget'?(enabled?1:0):Number(form.widget_enabled||0);
+    const full=kind==='full_page'?(enabled?1:0):Number(form.full_page_enabled||0);
+    const mode:ChatSurfaceConfig['mode']=widget&&full?'both':widget?'widget':'full_page';
+    setForm({...form,widget_enabled:widget,full_page_enabled:full,mode});
+  };
   const save=async()=>{
-    setMessage('');setSaveError('');setSaving(true);
+    setSaveError('');setSaving(true);
     try{
+      const widgetEnabled=Number(form.widget_enabled||0)===1;
+      const fullEnabled=Number(form.full_page_enabled||0)===1;
+      if(!widgetEnabled&&!fullEnabled)throw new Error('Hãy bật ít nhất một hình thức Website: nhúng hoặc trang chatbot riêng.');
       const publicSlug=String(form.public_slug||clientId).trim().toLowerCase().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');
-      if(!publicSlug)throw new Error('Đường dẫn công khai không hợp lệ.');
-      const mode:ChatSurfaceConfig['mode']='full_page';
-      const payload:ChatSurfaceConfig={...form,mode,client_id:clientId,public_slug:publicSlug,widget_enabled:0,full_page_enabled:1};
+      if(fullEnabled&&!publicSlug)throw new Error('Đường dẫn công khai không hợp lệ.');
+      const mode:ChatSurfaceConfig['mode']=widgetEnabled&&fullEnabled?'both':widgetEnabled?'widget':'full_page';
+      const payload:ChatSurfaceConfig={...form,mode,client_id:clientId,public_slug:publicSlug||clientId,widget_enabled:widgetEnabled?1:0,full_page_enabled:fullEnabled?1:0};
+      await api(withClient('/v1/admin/channels/web_widget'),{method:'PUT',body:JSON.stringify({display_name:item.display_name||'Website',status:'active',external_account_id:null,config:{widget_enabled:widgetEnabled,full_page_enabled:fullEnabled}})});
       await api(withClient('/v1/admin/chat-surface'),{method:'PUT',body:JSON.stringify(payload)});
-      setForm(payload);setMessage('Đã lưu cấu hình hiển thị.');await surface.reload();
+      onSaved();
     }catch(e){setSaveError(e instanceof Error?e.message:String(e));}
     finally{setSaving(false)}
   };
   const fullUrl=`https://chat.synotech.io.vn/chat/${encodeURIComponent(form.public_slug||clientId)}`;
-  const embed='Chatbot nhúng đang tạm khóa trong phiên bản production hiện tại.';
-  return <SectionCard title="Hình thức hiển thị chatbot" description="Giai đoạn hiện tại chỉ vận hành trang chatbot riêng để bảo đảm ổn định production.">
-    {surface.loading?<LoadingState/>:<div className="form-grid">
-      <div className="delivery-mode-grid">
-        <label className="delivery-mode-card disabled"><input type="radio" name="delivery-mode" disabled checked={false}/><span><strong>Nhúng vào website trường — Tạm khóa</strong><small>Không phát hành trong giai đoạn production hiện tại.</small></span></label>
-        <label className={`delivery-mode-card ${form.mode==='full_page'?'active':''}`}><input type="radio" name="delivery-mode" checked={form.mode==='full_page'} onChange={()=>setForm({...form,mode:'full_page',widget_enabled:0,full_page_enabled:1})}/><span><strong>Trang chatbot riêng</strong><small>Sử dụng trang chatbot độc lập theo đường dẫn riêng của từng trường.</small></span></label>
-      </div>
-      <label>Đường dẫn công khai<input value={form.public_slug||clientId} onChange={e=>setForm({...form,public_slug:e.target.value})}/></label>
-      <label>Tên miền riêng (không bắt buộc)<input value={form.custom_domain||''} onChange={e=>setForm({...form,custom_domain:e.target.value})} placeholder="chat.ten-truong.edu.vn"/></label>
-      <label>Màu/nền trang<input value={form.background_value||''} onChange={e=>setForm({...form,background_value:e.target.value})} placeholder="#f5f7fb hoặc URL ảnh"/></label>
-      <div className="full surface-mode-note">Chính sách hiện tại: chỉ trang chatbot riêng được phép hoạt động. Cấu hình cũ của chế độ nhúng không thể làm trang riêng bị tạm ngừng.</div>
-      <label className="full">Mã nhúng website<div className="copy-code">{embed}</div></label>
-      <label className="full">Trang chatbot riêng<div className="surface-link"><input readOnly value={fullUrl}/><a className="btn btn-secondary" href={fullUrl} target="_blank" rel="noreferrer">Mở trang</a></div></label>
-      {message&&<div className="success-message full">{message}</div>}
-      {saveError&&<div className="form-error full">{saveError}</div>}
-      <button className="btn btn-primary" onClick={save} disabled={saving}><Save size={16}/>{saving?'Đang lưu...':'Lưu cấu hình hiển thị'}</button>
-    </div>}
-  </SectionCard>
+  const embed=`<script src="https://chat.synotech.io.vn/widget-loader.js" data-client-id="${clientId}"></script>`;
+  if(surface.loading)return <LoadingState/>;
+  if(surface.error)return <ErrorState message={surface.error} retry={surface.reload}/>;
+  return <div className="form-grid website-channel-editor">
+    <div className="full surface-choice-title"><strong>Hình thức hiển thị chatbot</strong><small>Có thể bật đồng thời cả hai hình thức hoặc chỉ sử dụng một hình thức.</small></div>
+    <div className="delivery-mode-grid">
+      <label className={`delivery-mode-card ${Number(form.widget_enabled)===1?'active':''}`}><input type="checkbox" checked={Number(form.widget_enabled)===1} onChange={e=>setSurface('widget',e.target.checked)}/><span><strong>Nhúng vào website trường</strong><small>Hiển thị chatbot trực tiếp trên website chính thức của trường bằng mã nhúng.</small></span></label>
+      <label className={`delivery-mode-card ${Number(form.full_page_enabled)===1?'active':''}`}><input type="checkbox" checked={Number(form.full_page_enabled)===1} onChange={e=>setSurface('full_page',e.target.checked)}/><span><strong>Trang chatbot riêng</strong><small>Sử dụng trang chatbot độc lập theo đường dẫn riêng của từng trường.</small></span></label>
+    </div>
+    {Number(form.full_page_enabled)===1&&<><label>Đường dẫn công khai<input value={form.public_slug||clientId} onChange={e=>setForm({...form,public_slug:e.target.value})}/></label><label>Tên miền riêng (không bắt buộc)<input value={form.custom_domain||''} onChange={e=>setForm({...form,custom_domain:e.target.value})} placeholder="chat.ten-truong.edu.vn"/></label><label className="full">Màu/nền trang<input value={form.background_value||''} onChange={e=>setForm({...form,background_value:e.target.value})} placeholder="#f5f7fb hoặc URL ảnh"/></label><label className="full">Trang chatbot riêng<div className="surface-link"><input readOnly value={fullUrl}/><a className="btn btn-secondary" href={fullUrl} target="_blank" rel="noreferrer">Mở trang</a></div></label></>}
+    {Number(form.widget_enabled)===1&&<label className="full">Mã nhúng website<div className="copy-code">{embed}</div><small className="field-hint">Thêm domain website trường vào danh sách domain được phép trước khi đưa vào production.</small></label>}
+    {saveError&&<div className="form-error full">{saveError}</div>}
+    <button className="btn btn-primary" onClick={save} disabled={saving}><Save size={16}/>{saving?'Đang lưu...':'Lưu cấu hình Website'}</button>
+  </div>;
 }
 
 export function UsersPage(){
