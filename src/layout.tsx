@@ -39,6 +39,18 @@ function updateBrowserNotificationBadge(count:number){
   const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{ctx.drawImage(img,4,4,48,48);drawBadge();};img.onerror=fallback;img.src=baseHref;
 }
 
+
+let notificationAudioUnlocked=false;
+function unlockNotificationAudio(){notificationAudioUnlocked=true;}
+function playIncomingNotificationSound(){
+  if(!notificationAudioUnlocked||document.hidden)return;
+  try{
+    const AudioCtx=(window.AudioContext||(window as any).webkitAudioContext) as typeof AudioContext;
+    const ctx=new AudioCtx();const now=ctx.currentTime;
+    const tone=(frequency:number,start:number,duration:number,volume:number)=>{const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.setValueAtTime(frequency,now+start);gain.gain.setValueAtTime(0.0001,now+start);gain.gain.exponentialRampToValueAtTime(volume,now+start+0.015);gain.gain.exponentialRampToValueAtTime(0.0001,now+start+duration);osc.connect(gain);gain.connect(ctx.destination);osc.start(now+start);osc.stop(now+start+duration+0.02);};
+    tone(740,0,0.16,0.08);tone(980,0.18,0.22,0.07);window.setTimeout(()=>void ctx.close(),700);
+  }catch{/* Sound is enhancement-only; notifications remain visible. */}
+}
 const clientMenu: MenuItem[] = [
   ['/client/overview','Tổng quan',LayoutDashboard],
   ['/client/conversations','Hội thoại',MessagesSquare],
@@ -92,6 +104,7 @@ export function DashboardLayout() {
   const [unreadCount,setUnreadCount] = useState(0);
   const previousUnreadRef = useRef<number|null>(null);
   const menu = user?.role === 'super_admin' ? superMenu : clientMenu;
+  useEffect(()=>{const unlock=()=>unlockNotificationAudio();window.addEventListener('pointerdown',unlock,{once:true});window.addEventListener('keydown',unlock,{once:true});return()=>{window.removeEventListener('pointerdown',unlock);window.removeEventListener('keydown',unlock)}},[]);
   const activeGroup = user?.role==='super_admin' ? superMenuGroups.find(g=>g.items.some(i=>location.pathname.startsWith(i[0])))?.key : undefined;
   const [openGroups,setOpenGroups] = useState<string[]>(()=>activeGroup?[activeGroup]:['overview']);
   useEffect(()=>{ if(activeGroup) setOpenGroups(v=>v.includes(activeGroup)?v:[...v,activeGroup]); },[activeGroup]);
@@ -112,7 +125,8 @@ export function DashboardLayout() {
       const previous=previousUnreadRef.current;
       if(previous!==null&&nextCount>previous&&user?.role==='client_admin'){
         const newest=(r.results||[])[0];
-        notify(newest?.resource_type==='lead'?'Có khách hàng tiềm năng mới.':'Bạn có thông báo mới.','info');
+        const title=newest?.resource_type==='lead'?'Có khách hàng tiềm năng mới.':newest?.resource_type==='chat_feedback'?'Có phản hồi chatbot mới.':'Bạn có thông báo mới.';
+        notify(title,'info');playIncomingNotificationSound();
       }
       previousUnreadRef.current=nextCount;
       setNotifications(r.results||[]);
@@ -122,7 +136,7 @@ export function DashboardLayout() {
     const refresh=()=>{void load()};
     const visible=()=>{if(!document.hidden)void load()};
     void load();
-    const timer=window.setInterval(load,20000);
+    const timer=window.setInterval(()=>{if(!document.hidden)void load()},5000);
     window.addEventListener('focus',refresh);
     document.addEventListener('visibilitychange',visible);
     window.addEventListener('synotech:notifications-read',clear);
